@@ -6,6 +6,7 @@ import time
 import requests
 from selenium import webdriver
 from spider_domain.save_excel import save_excel
+from spider_domain.more_xz import *
 
 header = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'
@@ -149,17 +150,18 @@ def get_shop_list(cookies, xz):
     while FLAG:
         URL = 'https://h5.ele.me/restapi/shopping/v3/restaurants?latitude={latitude}&longitude={longitude}&offset={offset}&limit={limit}&extras[]=activities&extras[]=tags&extra_filters=home&rank_id={rank_id}&terminal=h5'.format(
             **data)
+        # print('条目',data['offset'])
         html = requests.get(url=URL, cookies=cookies, headers=header)
         print(html.status_code)
         if html.status_code != 200:
-            FLAG = False
-            data = {
-                'latitude': xz[0],
-                'longitude': xz[1],
-                'offset': 0,
-                'limit': 30,
-                'rank_id': RANK_ID
-            }
+            # FLAG = False
+            # data = {
+            #     'latitude': xz[0],
+            #     'longitude': xz[1],
+            #     'offset': 0,
+            #     'limit': 30,
+            #     'rank_id': RANK_ID
+            # }
             break
         if json.loads(html.text)['has_next']:
             with open("spider_domain\shop_list.json", "a", encoding='utf-8') as fp:
@@ -169,7 +171,7 @@ def get_shop_list(cookies, xz):
             FLAG = False
             break
 
-    print('完成信息获取，开始分析')
+
 
 
 def anazly_json(filename, cookies, xz,lis):
@@ -219,8 +221,11 @@ def anazly_json(filename, cookies, xz,lis):
             shop_info['是否新店'] = item['restaurant']['is_new']
             # 类别
             flavors = ''
-            for flavor in item['restaurant']['flavors']:
-                flavors += flavor['name'] + '|'
+            try:
+                for flavor in item['restaurant']['flavors']:
+                    flavors += flavor['name'] + '|'
+            except:
+                flavors = ''
             shop_info['类别'] = flavors
             # 经度
             shop_info['经度'] = item['restaurant']['latitude']
@@ -311,6 +316,20 @@ def get_cart_client(id, cookies, xz):
         print(cart_html.text)
         return {'商家地址': '', '商家电话': ''}
 
+def start_without_login(xz, filename,lis):
+
+    with open('./cookies.txt','r') as f:
+        cookie = f.read()
+    #转化为list
+    cookie = json.loads(cookie)
+    cookies = build_cookie(cookie)
+
+    more_xz = xz_more(xz)
+    for index,xz in enumerate(more_xz):
+        print('采集:',index)
+        get_shop_list(cookies, xz)
+    print('完成信息获取，开始分析')
+    anazly_json(filename, cookies, xz,lis[0])
 
 def start(xz, filename,lis):
     cookie = ''
@@ -324,7 +343,12 @@ def start(xz, filename,lis):
                 break
 
     cookies = build_cookie(cookie)
-    get_shop_list(cookies, xz)
+
+    more_xz = xz_more(xz)
+    for index,xz in enumerate(more_xz):
+        print('采集:',index)
+        get_shop_list(cookies, xz)
+    print('完成信息获取，开始分析')
     anazly_json(filename, cookies, xz,lis[0])
 
 # anazly_json('data')
